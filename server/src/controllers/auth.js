@@ -3,28 +3,24 @@ const jwt = require('jsonwebtoken');
 const prisma = require('../prisma/client');
 
 const register = async (req, res) => {
-    const { email, password, name } = req.body;
+    const { role, password } = req.body;
 
-    if (!email || !password || !name) {
-        return res.status(400).json({ message: 'Email, password, and name are required' });
+    if (!password || !role) {
+        return res.status(400).json({ message: 'Password and role are required' });
     }
 
     try {
-        const existingUser = await prisma.user.findUnique({ where: { email } });
+        const existingUser = await prisma.user.findFirst({ where: { role } });
         if (existingUser) {
-            return res.status(409).json({ message: 'User already exists' });
+            return res.status(409).json({ message: 'User with this role already exists' });
         }
 
         const hashedPassword = await bcrypt.hash(password, 10);
 
         const user = await prisma.user.create({
             data: {
-                email,
-                name,
                 password: hashedPassword,
-                // By default, the first user is an ADMIN, others can be changed later
-                // Or you can implement an invitation system
-                role: 'ADMIN',
+                role,
             },
         });
 
@@ -36,14 +32,14 @@ const register = async (req, res) => {
 };
 
 const login = async (req, res) => {
-    const { email, password } = req.body;
+    const { role, password } = req.body;
 
-    if (!email || !password) {
-        return res.status(400).json({ message: 'Email and password are required' });
+    if (!role || !password) {
+        return res.status(400).json({ message: 'Role and password are required' });
     }
 
     try {
-        const user = await prisma.user.findUnique({ where: { email } });
+        const user = await prisma.user.findFirst({ where: { role } });
         if (!user) {
             return res.status(401).json({ message: 'Invalid credentials' });
         }

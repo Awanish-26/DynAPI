@@ -18,8 +18,8 @@ export const AuthProvider = ({ children }) => {
         setLoading(false);
     }, [token]);
 
-    const login = async (email, password) => {
-        const response = await api.post('/auth/login', { email, password });
+    const login = async (role, password) => {
+        const response = await api.post('/auth/login', { role, password });
         const { token } = response.data;
         localStorage.setItem('token', token);
         setToken(token);
@@ -43,6 +43,6 @@ export const AuthProvider = ({ children }) => {
     );
 };
 
-export const useAuth = () => {
-    return useContext(AuthContext);
-};
+// eslint-disable-next-line react-refresh/only-export-components
+export const useAuth = () => useContext(AuthContext);
+export default AuthContext;

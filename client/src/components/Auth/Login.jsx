@@ -3,7 +3,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 
 const Login = () => {
-    const [email, setEmail] = useState('');
+    const [role, setRole] = useState('ADMIN');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
     const { login } = useAuth();
@@ -13,7 +13,7 @@ const Login = () => {
         e.preventDefault();
         setError('');
         try {
-            await login(email, password);
+            await login(role, password);
             navigate('/dashboard');
         } catch (err) {
             setError('Failed to log in. Please check your credentials.');
@@ -27,14 +27,11 @@ const Login = () => {
                 <h2 className="mb-6 text-2xl font-bold text-center">Login</h2>
                 {error && <p className="mb-4 text-red-500">{error}</p>}
                 <div className="mb-4">
-                    <input
-                        type="email"
-                        placeholder="Email"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        className="w-full px-3 py-2 text-white bg-gray-700 rounded"
-                        required
-                    />
+                    <select name="role" id="role" value={role} onChange={(e) => setRole(e.target.value)} className="w-full px-3 py-2 text-white bg-gray-700 rounded">
+                        <option value="ADMIN">Admin</option>
+                        <option value="MANAGER">Manager</option>
+                        <option value="VIEWER">Viewer</option>
+                    </select>
                 </div>
                 <div className="mb-6">
                     <input
