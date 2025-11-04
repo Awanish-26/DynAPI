@@ -67,4 +67,27 @@ const loadAndRegisterRoutes = async (app) => {
     }
 };
 
-module.exports = { loadAndRegisterRoutes };
+// Remove all routes for a specific model (base path: /api/{model})
+function unregisterModelRoutes(app, modelName) {
+    const base = `/api/${modelName.toLowerCase()}`;
+    try {
+        if (app && app._router && Array.isArray(app._router.stack)) {
+            app._router.stack = app._router.stack.filter((layer) => {
+                // Direct route
+                if (layer?.route?.path && String(layer.route.path).startsWith(base)) return false;
+                // Mounted router detection
+                if (layer?.name === 'router' && layer?.regexp && layer.regexp.toString().includes(base)) return false;
+                return true;
+            });
+        }
+        // If you track a Set of registered routes, drop it:
+        if (typeof registeredRoutes !== 'undefined' && registeredRoutes?.delete) {
+            registeredRoutes.delete(base);
+        }
+        console.log(`Unregistered routes for ${base}`);
+    } catch (e) {
+        console.error('Failed to unregister routes:', e);
+    }
+}
+
+module.exports = { loadAndRegisterRoutes, unregisterModelRoutes };

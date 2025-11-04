@@ -1,14 +1,19 @@
 const express = require('express');
-const { publishModel, getModels } = require('../controllers/modelController');
-const { authenticateToken } = require('../middleware/auth');
 const router = express.Router();
 
-const injectApp = (req, res, next) => {
-    req.app = req.app || {};
-    next();
-}
+const {
+    publishModel,
+    getModels,
+    getModel,
+    updateModel,
+    deleteModel
+} = require('../controllers/modelController');
 
-router.post('/models/publish', authenticateToken, injectApp, publishModel);
-router.get('/models', authenticateToken, getModels);
+// Models management
+router.get('/models', getModels);
+router.get('/models/:name', getModel);
+router.post('/models/publish', publishModel);
+router.put('/models/:name', updateModel);
+router.delete('/models/:name', deleteModel);
 
 module.exports = router;
