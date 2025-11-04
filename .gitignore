@@ -25,3 +25,4 @@ dist-ssr
 prisma_builds/
 generated/
 *.db
+.tmp
