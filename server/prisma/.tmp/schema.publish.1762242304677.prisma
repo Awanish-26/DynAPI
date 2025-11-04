@@ -1,6 +1,6 @@
 generator client {
   provider = "prisma-client-js"
-  output   = "../generated/prisma"
+  output = "C:\\All-Program\\DynAPI\\server\\generated\\prisma_builds\\1762242304674"
 }
 
 datasource db {

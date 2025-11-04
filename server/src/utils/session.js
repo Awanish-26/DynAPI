@@ -58,6 +58,8 @@ setInterval(cleanSessions, 60 * 60 * 1000); // Run hourly
 
 module.exports = {
     sessions,
+    getSession,
+    getSessionCount,
     createSession,
     removeSession,
     cleanSessions

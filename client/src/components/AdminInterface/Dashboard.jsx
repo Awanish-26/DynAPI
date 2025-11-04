@@ -1,26 +1,21 @@
 import React from 'react';
-import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import { FaPlus } from 'react-icons/fa6';
 
 const Dashboard = () => {
-    const { logout } = useAuth();
     const navigate = useNavigate();
 
-    const handleLogout = () => {
-        logout();
-        navigate('/login');
-    };
 
     return (
         <div className="p-8">
-            <h1 className="text-3xl font-bold">Admin Dashboard</h1>
-            <p className="mt-4">Welcome to the protected area!</p>
-            <button
-                onClick={handleLogout}
-                className="px-4 py-2 mt-6 font-bold text-white bg-red-600 rounded hover:bg-red-700"
-            >
-                Logout
-            </button>
+            <div className="mb-6 flex justify-between items-center">
+                <h1 className="text-3xl font-bold">Admin Dashboard</h1>
+                <button
+                    onClick={() => navigate('/model-builder')}
+                    className="px-4 py-2 font-bold text-white bg-blue-600 rounded hover:bg-blue-700 flex items-center mt-4">
+                    <span className='px-2'>Create Model </span> <FaPlus />
+                </button>
+            </div>
         </div>
     );
 };

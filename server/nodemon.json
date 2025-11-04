@@ -1,0 +1,13 @@
+{
+    "watch": [
+        "src"
+    ],
+    "ext": "js,json",
+    "ignore": [
+        "prisma/**",
+        "generated/**",
+        "src/models/generated/**",
+        "server/generated/**",
+        "node_modules/**"
+    ]
+}
