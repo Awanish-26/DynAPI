@@ -1,40 +1,101 @@
-import React, { createContext, useState, useContext, useEffect } from 'react';
+import { createContext, useState, useContext, useEffect } from 'react';
 import api from '../services/api';
 
 const AuthContext = createContext(null);
 
+function decodeJwt(token) {
+    try {
+        const base64 = token.split('.')[1]?.replace(/-/g, '+').replace(/_/g, '/');
+        const json = atob(base64);
+        return JSON.parse(json);
+    } catch {
+        return null;
+    }
+}
+
 export const AuthProvider = ({ children }) => {
-    const [user, setUser] = useState(null);
-    const [token, setToken] = useState(localStorage.getItem('token'));
+    const [user, setUser] = useState(null); // { id, role }
+    const [token, setToken] = useState(() => localStorage.getItem('token') || null);
     const [loading, setLoading] = useState(true);
 
+    // Bootstrap from localStorage
     useEffect(() => {
-        if (token) {
-            api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-            // Here you would typically fetch user profile
-            // For now, we'll just assume the token is valid
-            // setUser({ role: 'ADMIN' }); // Placeholder
-        }
-        setLoading(false);
+        const boot = async () => {
+            if (!token) {
+                setUser(null);
+                setLoading(false);
+                return;
+            }
+            const payload = decodeJwt(token);
+            const isExpired = !payload?.exp || payload.exp * 1000 < Date.now();
+            if (!payload || isExpired) {
+                // Expired/invalid token
+                localStorage.removeItem('token');
+                setToken(null);
+                setUser(null);
+                setLoading(false);
+                return;
+            }
+            setUser({ id: payload.userId, role: payload.role });
+            setLoading(false);
+        };
+        boot();
+    }, [token]);
+
+    // Axios interceptors to attach token and handle 401
+    useEffect(() => {
+        const reqId = api.interceptors.request.use((config) => {
+            if (token) config.headers.Authorization = `Bearer ${token}`;
+            return config;
+        });
+        const resId = api.interceptors.response.use(
+            (res) => res,
+            (err) => {
+                if (err?.response?.status === 401) {
+                    // Token invalid/expired -> logout
+                    localStorage.removeItem('token');
+                    setToken(null);
+                    setUser(null);
+                }
+                return Promise.reject(err);
+            }
+        );
+        return () => {
+            api.interceptors.request.eject(reqId);
+            api.interceptors.response.eject(resId);
+        };
     }, [token]);
 
     const login = async (role, password) => {
         const response = await api.post('/auth/login', { role, password });
-        const { token } = response.data;
-        localStorage.setItem('token', token);
-        setToken(token);
-        api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-        // You might want to fetch the user profile here
+        const { token: t } = response.data;
+        localStorage.setItem('token', t);
+        setToken(t);
+        const payload = decodeJwt(t);
+        if (payload) setUser({ id: payload.userId, role: payload.role });
+    };
+
+    const register = async (role, password) => {
+        // Registration should NOT set auth header or token
+        const response = await api.post('/auth/register', { role, password });
+        return response.data;
     };
 
     const logout = () => {
         setUser(null);
         setToken(null);
         localStorage.removeItem('token');
-        delete api.defaults.headers.common['Authorization'];
+        // Header cleared by interceptor effect on next render
     };
 
-    const value = { token, user, login, logout, isAuthenticated: !!token };
+    const value = {
+        token,
+        user,
+        isAuthenticated: !!token && !!user,
+        login,
+        register,
+        logout,
+    };
 
     return (
         <AuthContext.Provider value={value}>

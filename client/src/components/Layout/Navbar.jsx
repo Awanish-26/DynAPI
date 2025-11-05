@@ -29,9 +29,14 @@ const Navbar = () => {
                     </li>
 
                 ) : (
-                    <Link to="/login" className="hover:text-red-400 bg-gray-100/20 px-2 py-1 rounded-sm">
-                        Login
-                    </Link>
+                    <div className="flex">
+                        <Link to="/login" className="hover:text-red-400 bg-gray-100/20 px-2 py-1 rounded-sm">
+                            Login
+                        </Link>
+                        <Link to="/register" className="ml-4 hover:text-green-400 bg-gray-100/20 px-2 py-1 rounded-sm">
+                            Register
+                        </Link>
+                    </div>
                 )
             }
         </nav >

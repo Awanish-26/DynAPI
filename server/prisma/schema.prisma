@@ -22,13 +22,10 @@ enum Role {
   VIEWER
 }
 
-
-
-
 model Employee {
   id        Int      @id @default(autoincrement())
   Name String
-  Position String
+  Designation String
   DateOfJoining String
   Salary String
   createdAt DateTime @default(now())
