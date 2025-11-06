@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../services/api';
 
@@ -8,6 +8,7 @@ const Dashboard = () => {
     const [loading, setLoading] = useState(true);
     const [busy, setBusy] = useState(null);
 
+    // Fetch models from the API
     const loadModels = async () => {
         setLoading(true);
         try {

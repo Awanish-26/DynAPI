@@ -1,7 +1,8 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import api from '../../services/api';
 
+// Helper to render input based on field type
 const fieldInput = (field, value, onChange) => {
     const common = { className: 'p-2 border rounded bg-white text-black w-full', value: value ?? '', onChange };
     switch (field.type) {
@@ -19,6 +20,7 @@ const fieldInput = (field, value, onChange) => {
     }
 };
 
+// Helper to coerce input value for submission based on field type
 const coerceForSubmit = (field, v) => {
     if (v === '' || v === undefined || v === null) return undefined;
     if (field.type === 'number') return Number(v);

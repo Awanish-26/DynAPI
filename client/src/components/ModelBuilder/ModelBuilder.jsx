@@ -13,6 +13,7 @@ const ModelBuilder = () => {
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
 
+    // Load existing model data if editing
     useEffect(() => {
         const load = async () => {
             if (!isEdit) return;
@@ -32,6 +33,7 @@ const ModelBuilder = () => {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isEdit, editName]);
 
+    // Handlers for field and rbac management
     const handleAddField = () => setFields([...fields, { name: '', type: 'string', required: true, unique: false }]);
     const handleRemoveField = (index) => setFields(fields.filter((_, i) => i !== index));
     const handleFieldChange = (index, e) => {

@@ -4,6 +4,7 @@ const baseURL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
 const api = axios.create({ baseURL });
 
+// Interceptor to include the token in headers
 api.interceptors.request.use((config) => {
     const token = localStorage.getItem('token');
     if (token) {

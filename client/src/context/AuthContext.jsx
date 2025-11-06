@@ -3,6 +3,7 @@ import api from '../services/api';
 
 const AuthContext = createContext(null);
 
+// Decode JWT to extract payload
 function decodeJwt(token) {
     try {
         const base64 = token.split('.')[1]?.replace(/-/g, '+').replace(/_/g, '/');
@@ -18,7 +19,7 @@ export const AuthProvider = ({ children }) => {
     const [token, setToken] = useState(() => localStorage.getItem('token') || null);
     const [loading, setLoading] = useState(true);
 
-    // Bootstrap from localStorage
+    // Bootstrap from localStorage on mount and validate token expiry if present 
     useEffect(() => {
         const boot = async () => {
             if (!token) {
@@ -29,7 +30,6 @@ export const AuthProvider = ({ children }) => {
             const payload = decodeJwt(token);
             const isExpired = !payload?.exp || payload.exp * 1000 < Date.now();
             if (!payload || isExpired) {
-                // Expired/invalid token
                 localStorage.removeItem('token');
                 setToken(null);
                 setUser(null);
@@ -66,6 +66,7 @@ export const AuthProvider = ({ children }) => {
         };
     }, [token]);
 
+    // Auth actions
     const login = async (role, password) => {
         const response = await api.post('/auth/login', { role, password });
         const { token: t } = response.data;
@@ -75,17 +76,17 @@ export const AuthProvider = ({ children }) => {
         if (payload) setUser({ id: payload.userId, role: payload.role });
     };
 
+    // Registration action
     const register = async (role, password) => {
-        // Registration should NOT set auth header or token
         const response = await api.post('/auth/register', { role, password });
         return response.data;
     };
 
+    // Logout action
     const logout = () => {
         setUser(null);
         setToken(null);
         localStorage.removeItem('token');
-        // Header cleared by interceptor effect on next render
     };
 
     const value = {

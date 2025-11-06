@@ -18,26 +18,25 @@ const Navbar = () => {
                 <Link to="/">DynAPI</Link>
             </h1>
 
-            {
-                isAuthenticated ? (
-                    <li className="flex">
-                        <button
-                            onClick={handleLogout}
-                            className="hover:text-red-400 bg-gray-100/20 px-2 py-1 rounded-sm">
-                            Logout
-                        </button>
-                    </li>
+            {isAuthenticated ? (
+                <li className="flex">
+                    <button
+                        onClick={handleLogout}
+                        className="hover:text-red-400 bg-gray-100/20 px-2 py-1 rounded-sm">
+                        Logout
+                    </button>
+                </li>
 
-                ) : (
-                    <div className="flex">
-                        <Link to="/login" className="hover:text-red-400 bg-gray-100/20 px-2 py-1 rounded-sm">
-                            Login
-                        </Link>
-                        <Link to="/register" className="ml-4 hover:text-green-400 bg-gray-100/20 px-2 py-1 rounded-sm">
-                            Register
-                        </Link>
-                    </div>
-                )
+            ) : (
+                <div className="flex">
+                    <Link to="/login" className="hover:text-red-400 bg-gray-100/20 px-2 py-1 rounded-sm">
+                        Login
+                    </Link>
+                    <Link to="/register" className="ml-4 hover:text-green-400 bg-gray-100/20 px-2 py-1 rounded-sm">
+                        Register
+                    </Link>
+                </div>
+            )
             }
         </nav >
     );
