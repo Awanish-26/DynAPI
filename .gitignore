@@ -26,3 +26,6 @@ prisma_builds/
 generated/
 *.db
 .tmp
+.env
+node_modules
+/generated/prisma

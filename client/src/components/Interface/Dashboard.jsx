@@ -45,10 +45,7 @@ const Dashboard = () => {
         <div className="p-6">
             <div className="mb-4 flex justify-between items-center">
                 <h1 className="text-2xl font-bold">Models</h1>
-                <button
-                    onClick={() => navigate('/model-builder')}
-                    className="px-4 py-2 font-semibold text-white bg-blue-600 rounded hover:bg-blue-700"
-                >
+                <button onClick={() => navigate('/model-builder')} className="px-4 py-2 font-semibold text-white bg-blue-600 rounded hover:bg-blue-700">
                     Create Model
                 </button>
             </div>
