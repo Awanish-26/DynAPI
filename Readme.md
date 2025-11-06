@@ -7,7 +7,7 @@ A Internal Developer app to publish API's from Web UI
 
 ## How to get it working
 
-- In terminal `git clone `
+- In terminal `git clone https://github.com/Awanish-26/DynAPI.git`
 - cd in DynAPI and open one more terminal
     1. ```
         cd server
