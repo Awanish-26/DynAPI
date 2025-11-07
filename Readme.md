@@ -38,3 +38,32 @@ A Internal Developer app to publish API's from Web UI
     - `PUT    /api/<modelName>/:id`
     - `DELETE /api/<modelName>/:id`
 
+## Screenshots
+
+- Register and Login
+
+![Login](/screenshots/Screenshot%20(65).png)
+
+- Dashboard
+
+![Dashboard](/screenshots/Screenshot%20(66).png)
+
+- Create Model
+
+![CreateModel](/screenshots/Screenshot%20(67).png)
+
+- Publish Model
+
+![PublishMOdel](/screenshots/Screenshot%20(68).png)
+
+- Back to Dashboard (model listed and endpoints created in few sec)
+
+![BackDashboard](/screenshots/Screenshot%20(69).png)
+
+- Edit Model Schema
+
+![EditSchema](/screenshots/Screenshot%20(70).png)
+
+- Add Data in Database Model
+
+![AddData](/screenshots/Screenshot%20(71).png)
