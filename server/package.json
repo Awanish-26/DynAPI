@@ -6,20 +6,28 @@
   "description": "Backned",
   "main": "src/app.js",
   "scripts": {
-    "prestart": "prisma db push --skip-generate",
+    "prestart": "prisma db push && prisma generate",
     "start": "node src/app.js",
-    "dev": "nodemon src/app.js"
+    "dev": "nodemon --ignore generated/ --ignore prisma/ src/app.js",
+    "prepare": "prisma generate"
   },
   "dependencies": {
-    "@prisma/client": "^6.18.0",
+    "@prisma/adapter-better-sqlite3": "^7.2.0",
+    "@prisma/client": "^7.2.0",
     "bcryptjs": "^3.0.2",
     "cors": "^2.8.5",
-    "dotenv": "^17.2.3",
     "express": "^5.1.0",
-    "jsonwebtoken": "^9.0.2",
-    "prisma": "^6.18.0"
+    "jsonwebtoken": "^9.0.2"
   },
   "devDependencies": {
-    "nodemon": "^3.1.10"
-  }
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/node": "^25.0.8",
+    "dotenv": "^17.2.3",
+    "nodemon": "^3.1.10",
+    "prisma": "^7.2.0",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3"
+  },
+  "keywords": [],
+  "type": "module"
 }

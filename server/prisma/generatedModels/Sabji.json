@@ -1,0 +1,23 @@
+{
+  "name": "Sabji",
+  "fields": [
+    {
+      "name": "Puri",
+      "type": "string",
+      "required": true,
+      "unique": false
+    }
+  ],
+  "rbac": {
+    "ADMIN": [
+      "all"
+    ],
+    "MANAGER": [
+      "read"
+    ],
+    "VIEWER": [
+      "read"
+    ]
+  },
+  "tableName": "sabjis"
+}

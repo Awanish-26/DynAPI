@@ -1,5 +1,3 @@
-const prisma = require('../prisma/client');
-
 const checkPermissions = (modelDefinition) => {
     return async (req, res, next) => {
         const userRole = req.user.role; // From authenticateToken middleware
@@ -23,4 +21,4 @@ const checkPermissions = (modelDefinition) => {
     };
 };
 
-module.exports = { checkPermissions };
+export default checkPermissions;

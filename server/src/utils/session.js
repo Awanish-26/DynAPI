@@ -1,15 +1,15 @@
-const { SESSION_EXPIRY } = require('./config');
+import { SESSION_EXPIRY } from './config.js';
 
 // Session storage (in-memory for simplicity)
-const sessions = new Map();
+export const sessions = new Map();
 
 // Helper function to generate session token
-const generateSessionToken = () => {
+export const generateSessionToken = () => {
     return Math.random().toString(36).substring(2) + Date.now().toString(36);
 };
 
 // Create a new session
-const createSession = (user) => {
+export const createSession = (user) => {
     const token = generateSessionToken();
     const expires = Date.now() + SESSION_EXPIRY;
 
@@ -20,7 +20,7 @@ const createSession = (user) => {
 };
 
 // Remove a session
-const removeSession = (token) => {
+export const removeSession = (token) => {
     if (sessions.has(token)) {
         sessions.delete(token);
         return true;
@@ -29,17 +29,17 @@ const removeSession = (token) => {
 };
 
 // Get session information
-const getSession = (token) => {
+export const getSession = (token) => {
     return sessions.get(token);
 };
 
 // Get total active session count
-const getSessionCount = () => {
+export const getSessionCount = () => {
     return sessions.size;
 };
 
 // Clean up expired sessions
-const cleanSessions = () => {
+export const cleanSessions = () => {
     const now = Date.now();
     let cleanedCount = 0;
 
@@ -55,12 +55,3 @@ const cleanSessions = () => {
 
 // Schedule regular cleanup
 setInterval(cleanSessions, 60 * 60 * 1000); // Run hourly
-
-module.exports = {
-    sessions,
-    getSession,
-    getSessionCount,
-    createSession,
-    removeSession,
-    cleanSessions
-};

@@ -1,92 +1,64 @@
-const fs = require('fs/promises');
-const path = require('path');
-const { exec } = require('child_process');
-const util = require('util');
-const { loadAndRegisterRoutes, unregisterModelRoutes } = require('../services/routeLoader');
-const { swapClient } = require('../prisma/clientManager');
+import { readdir, readFile, mkdir, writeFile, unlink, access } from 'fs/promises';
+import { join } from 'path';
+import { prisma } from '../prisma/client.js';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+import { toPascal, findModelBlock, removeModelFromSchema } from '../utils/modelUtils.js';
+import { exec } from 'child_process';
+import { loadAndRegisterRoutes, unregisterModelRoutes } from '../services/routeLoader.js';
+import { promisify } from 'util';
 
-const execPromise = util.promisify(exec);
-const modelsDir = path.join(__dirname, '../models/generated');
-const schemaPath = path.join(__dirname, '../../prisma/schema.prisma');
 
-// Prevent concurrent publishes in-process
+const execPromise = promisify(exec);
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+// path of prisma schema and models directory
+const modelsDir = join(__dirname, '../../prisma/generatedModels');
+const schemaPath = join(__dirname, '../../prisma/schema.prisma');
+
 let isPublishing = false;
 
-// Helper to replace existing model block or append if not present
+// Utility to convert string to PascalCase
+const typeMapping = {
+    'string': 'String',
+    'number': 'Int',
+    'float': 'Float',
+    'boolean': 'Boolean',
+    'datetime': 'DateTime'
+};
+
 const upsertModelInSchema = async (schemaPath, modelName, modelBlock) => {
     let schema = '';
     try {
-        schema = await fs.readFile(schemaPath, 'utf-8');
+        schema = await readFile(schemaPath, 'utf-8');
     } catch {
         schema = '';
     }
-    const blockRegex = new RegExp(`\\nmodel\\s+${modelName}\\s+\\{[\\s\\S]*?\\n\\}`, 'g');
+
+    const blockRegex = new RegExp(`model\\s+${modelName}\\s+\\{[\\s\\S]*?\\n\\}`, 'gm');
 
     if (blockRegex.test(schema)) {
-        schema = schema.replace(blockRegex, '\n' + modelBlock.trim() + '\n');
+        // Reset regex before replace
+        blockRegex.lastIndex = 0;
+        schema = schema.replace(blockRegex, modelBlock.trim());
     } else {
         if (!schema.endsWith('\n')) schema += '\n';
-        schema += modelBlock + '\n';
+        schema += '\n' + modelBlock.trim() + '\n';
     }
-    await fs.writeFile(schemaPath, schema, 'utf-8');
+
+    await writeFile(schemaPath, schema, 'utf-8');
 };
 
-// A map to convert JSON types to Prisma types
-const typeMapping = {
-    string: 'String',
-    number: 'Int', // Defaulting number to Int, can be extended for Float
-    boolean: 'Boolean',
-    datetime: 'DateTime',
-};
-
-async function writeTempSchemaWithOutput(baseSchemaPath, outDir) {
-    const schema = await fs.readFile(baseSchemaPath, 'utf-8');
-    const generatorBlockRegex = /generator\s+client\s+\{[\s\S]*?\}/m;
-    const replaced = schema.replace(generatorBlockRegex, (block) => {
-        let b = block;
-        const out = outDir.replace(/\\/g, '\\\\');
-        if (/output\s*=/.test(b)) {
-            b = b.replace(/output\s*=.*$/m, `output = "${out}"`);
-        } else {
-            b = b.replace(/\}$/, `  output = "${out}"\n}`);
-        }
-        return b;
-    });
-    const tmpDir = path.join(path.dirname(baseSchemaPath), '.tmp');
-    await fs.mkdir(tmpDir, { recursive: true });
-    const tmpSchema = path.join(tmpDir, `schema.publish.${Date.now()}.prisma`);
-    await fs.writeFile(tmpSchema, replaced, 'utf-8');
-    return tmpSchema;
-}
-
-const toPascal = (s = '') => s ? s[0].toUpperCase() + s.slice(1) : s;
-
-const findModelBlock = async (schemaPath, modelName) => {
-    const schema = await fs.readFile(schemaPath, 'utf-8').catch(() => '');
-    const blockRegex = new RegExp(`\\nmodel\\s+${modelName}\\s+\\{[\\s\\S]*?\\n\\}`, 'm');
-    const match = schema.match(blockRegex);
-    return match ? match[0].trim() : null;
-};
-
-const removeModelFromSchema = async (schemaPath, modelName) => {
-    let schema = await fs.readFile(schemaPath, 'utf-8').catch(() => '');
-    const blockRegex = new RegExp(`\\nmodel\\s+${modelName}\\s+\\{[\\s\\S]*?\\n\\}`, 'g');
-    const next = schema.replace(blockRegex, '\n');
-    if (next !== schema) {
-        await fs.writeFile(schemaPath, next, 'utf-8');
-        return true;
-    }
-    return false;
-};
 
 // List all models from models/generated/*.json
-const getModels = async (req, res) => {
+export const getModels = async (req, res) => {
     try {
-        const files = await fs.readdir(modelsDir);
+        const files = await readdir(modelsDir);
         const models = [];
         for (const file of files) {
             if (!file.endsWith('.json')) continue;
-            const content = await fs.readFile(path.join(modelsDir, file), 'utf-8');
+            const content = await readFile(join(modelsDir, file), 'utf-8');
             const json = JSON.parse(content);
             models.push({ name: json.name, fields: json.fields, ownerField: json.ownerField || null });
         }
@@ -97,11 +69,12 @@ const getModels = async (req, res) => {
 };
 
 // View a single model: JSON definition + Prisma model block
-const getModel = async (req, res) => {
+export const getModel = async (req, res) => {
     try {
         const name = toPascal(req.params.name);
-        const file = path.join(modelsDir, `${name}.json`);
-        const content = await fs.readFile(file, 'utf-8');
+        console.log('Fetching model:', name);
+        const file = join(modelsDir, `${name}.json`);
+        const content = await readFile(file, 'utf-8');
         const json = JSON.parse(content);
         const prismaModel = await findModelBlock(schemaPath, name);
         res.json({ json, prismaModel });
@@ -110,7 +83,7 @@ const getModel = async (req, res) => {
     }
 };
 
-const publishModel = async (req, res) => {
+export const publishModel = async (req, res) => {
     const { name, fields, ownerField, rbac } = req.body;
     const app = req.app;
 
@@ -120,15 +93,21 @@ const publishModel = async (req, res) => {
     if (isPublishing) {
         return res.status(409).json({ message: 'Another model operation is in progress. Try again shortly.' });
     }
-    isPublishing = true;
 
     const normalizedName = toPascal(name);
-    const modelJsonPath = path.join(modelsDir, `${normalizedName}.json`);
+    const modelKey = normalizedName.toLowerCase();
+
+    if (prisma[modelKey]) {
+        return res.status(409).json({ message: `Model '${normalizedName}' already exists.` });
+    }
+
+    const modelJsonPath = join(modelsDir, `${normalizedName}.json`);
     const modelDefinition = { name: normalizedName, fields, ownerField, rbac, tableName: normalizedName.toLowerCase() + 's' };
 
+
+
     try {
-        await fs.mkdir(modelsDir, { recursive: true });
-        await fs.writeFile(modelJsonPath, JSON.stringify(modelDefinition, null, 2));
+        await writeFile(modelJsonPath, JSON.stringify(modelDefinition, null, 2));
 
         // Build Prisma model block
         let modelString = `\nmodel ${normalizedName} {\n`;
@@ -145,17 +124,13 @@ const publishModel = async (req, res) => {
 
         await upsertModelInSchema(schemaPath, normalizedName, modelString);
 
-        res.status(202).json({ message: `Publishing '${normalizedName}' started.` });
+        res.status(202).json({ message: `Publishing '${name}' started.` });
 
+        // Background process to push DB changes, generate client, and register routes
         (async () => {
             try {
-                await execPromise('npx prisma db push --skip-generate');
-                const buildsDir = path.join(__dirname, '../../generated/prisma_builds');
-                await fs.mkdir(buildsDir, { recursive: true });
-                const outDir = path.join(buildsDir, String(Date.now()));
-                const tmpSchema = await writeTempSchemaWithOutput(schemaPath, outDir);
-                await execPromise(`npx prisma generate --schema "${tmpSchema}"`);
-                await swapClient(outDir);
+                await execPromise('npx prisma db push');
+                await execPromise('npx prisma generate');
                 await loadAndRegisterRoutes(app);
                 console.log(`Model '${normalizedName}' published and endpoints generated.`);
             } catch (error) {
@@ -165,14 +140,14 @@ const publishModel = async (req, res) => {
             }
         })();
     } catch (error) {
-        await fs.unlink(modelJsonPath).catch(() => { });
+        await unlink(modelJsonPath).catch(() => { });
         isPublishing = false;
         res.status(500).json({ message: 'Error starting publish.', error: error.message });
     }
 };
 
 // Update model fields and republish (no rename via this endpoint)
-const updateModel = async (req, res) => {
+export const updateModel = async (req, res) => {
     const app = req.app;
     const nameParam = req.params.name;
     const normalizedName = toPascal(nameParam);
@@ -185,16 +160,16 @@ const updateModel = async (req, res) => {
     }
     isPublishing = true;
 
-    const modelJsonPath = path.join(modelsDir, `${normalizedName}.json`);
+    const modelJsonPath = join(modelsDir, `${normalizedName}.json`);
     try {
-        const exists = await fs.access(modelJsonPath).then(() => true).catch(() => false);
+        const exists = await access(modelJsonPath).then(() => true).catch(() => false);
         if (!exists) {
             isPublishing = false;
             return res.status(404).json({ message: 'Model not found.' });
         }
-        const current = JSON.parse(await fs.readFile(modelJsonPath, 'utf-8'));
+        const current = JSON.parse(await readFile(modelJsonPath, 'utf-8'));
         const updated = { ...current, fields, ownerField: ownerField ?? current.ownerField, rbac: rbac ?? current.rbac };
-        await fs.writeFile(modelJsonPath, JSON.stringify(updated, null, 2));
+        await writeFile(modelJsonPath, JSON.stringify(updated, null, 2));
 
         // Rebuild prisma block
         let modelString = `\nmodel ${normalizedName} {\n`;
@@ -215,10 +190,10 @@ const updateModel = async (req, res) => {
 
         (async () => {
             try {
-                await execPromise('npx prisma db push --skip-generate');
-                const buildsDir = path.join(__dirname, '../../generated/prisma_builds');
-                await fs.mkdir(buildsDir, { recursive: true });
-                const outDir = path.join(buildsDir, String(Date.now()));
+                await execPromise('npx prisma db push');
+                const buildsDir = join(__dirname, '../../generated/prisma_builds');
+                await mkdir(buildsDir, { recursive: true });
+                const outDir = join(buildsDir, String(Date.now()));
                 const tmpSchema = await writeTempSchemaWithOutput(schemaPath, outDir);
                 await execPromise(`npx prisma generate --schema "${tmpSchema}"`);
                 await swapClient(outDir);
@@ -237,10 +212,10 @@ const updateModel = async (req, res) => {
 };
 
 // Delete a model: remove JSON and Prisma block, drop table, unregister routes
-const deleteModel = async (req, res) => {
+export const deleteModel = async (req, res) => {
     const app = req.app;
     const normalizedName = toPascal(req.params.name);
-    const modelJsonPath = path.join(modelsDir, `${normalizedName}.json`);
+    const modelJsonPath = join(modelsDir, `${normalizedName}.json`);
     if (isPublishing) {
         return res.status(409).json({ message: 'Another model operation is in progress. Try again shortly.' });
     }
@@ -248,7 +223,7 @@ const deleteModel = async (req, res) => {
 
     try {
         // Remove file (if exists)
-        await fs.unlink(modelJsonPath).catch(() => { });
+        await unlink(modelJsonPath).catch(() => { });
         // Remove schema block
         await removeModelFromSchema(schemaPath, normalizedName);
 
@@ -258,10 +233,10 @@ const deleteModel = async (req, res) => {
         (async () => {
             try {
                 // Accept data loss to drop table on db push
-                await execPromise('npx prisma db push --skip-generate --accept-data-loss');
-                const buildsDir = path.join(__dirname, '../../generated/prisma_builds');
-                await fs.mkdir(buildsDir, { recursive: true });
-                const outDir = path.join(buildsDir, String(Date.now()));
+                await execPromise('npx prisma db push --accept-data-loss');
+                const buildsDir = join(__dirname, '../../generated/prisma_builds');
+                await mkdir(buildsDir, { recursive: true });
+                const outDir = join(buildsDir, String(Date.now()));
                 const tmpSchema = await writeTempSchemaWithOutput(schemaPath, outDir);
                 await execPromise(`npx prisma generate --schema "${tmpSchema}"`);
                 await swapClient(outDir);
@@ -282,5 +257,3 @@ const deleteModel = async (req, res) => {
         res.status(500).json({ message: 'Deletion failed.', error: e.message });
     }
 };
-
-module.exports = { publishModel, getModels, getModel, updateModel, deleteModel };

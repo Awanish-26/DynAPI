@@ -1,14 +1,10 @@
-const { getPrisma } = require('./clientManager');
+import "dotenv/config";
+import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
+import { PrismaClient } from "../../generated/prisma/index.js";
 
-const prismaProxy = new Proxy({}, {
-    get(_t, prop) {
-        const prisma = getPrisma();
-        return prisma[prop];
-    },
-    apply(_t, thisArg, args) {
-        const prisma = getPrisma();
-        return prisma.apply(thisArg, args);
-    }
-});
+const connectionString = `${process.env.DATABASE_URL}`;
 
-module.exports = prismaProxy;
+const adapter = new PrismaBetterSqlite3({ url: connectionString });
+const prisma = new PrismaClient({ adapter });
+
+export { prisma };

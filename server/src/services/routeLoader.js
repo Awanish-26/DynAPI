@@ -1,29 +1,33 @@
-const express = require('express');
-const fs = require('fs/promises');
-const path = require('path');
-const cors = require('cors');
-const prisma = require('../prisma/client');
-const { authenticateToken } = require('../middleware/auth');
-const { checkPermissions } = require('../middleware/rbac');
+import { Router } from 'express';
+import { readdir, readFile } from 'fs/promises';
+import { join, basename } from 'path';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+import cors from 'cors';
+import { prisma } from '../prisma/client.js';
+import authenticateToken from '../middleware/authMiddleware.js';
+import checkPermissions from '../middleware/rbacMiddleware.js';
 
-const modelsDir = path.join(__dirname, '../models/generated');
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+const modelsDir = join(__dirname, '../../prisma/generatedModels');
 
 // This object will keep track of registered routes to avoid duplicates
 const registeredRoutes = new Set();
 
-const loadAndRegisterRoutes = async (app) => {
+export const loadAndRegisterRoutes = async (app) => {
     try {
-        const files = await fs.readdir(modelsDir);
+        const files = await readdir(modelsDir);
 
         for (const file of files) {
             if (!file.endsWith('.json')) continue;
 
-            const modelName = path.basename(file, '.json');
+            const modelName = basename(file, '.json');
             const routePath = `/api/${modelName.toLowerCase()}`;
             if (registeredRoutes.has(routePath)) continue;
 
-            const modelDefinition = JSON.parse(await fs.readFile(path.join(modelsDir, file), 'utf-8'));
-            const router = express.Router();
+            const modelDefinition = JSON.parse(await readFile(join(modelsDir, file), 'utf-8'));
+            const router = Router();
 
             // Resolve Prisma delegate (Prisma uses lowerCamelCase)
             const toLowerCamel = (s) => s.charAt(0).toLowerCase() + s.slice(1);
@@ -86,7 +90,7 @@ const loadAndRegisterRoutes = async (app) => {
     }
 };
 
-function unregisterModelRoutes(app, modelName) {
+export function unregisterModelRoutes(app, modelName) {
     const base = `/api/${modelName.toLowerCase()}`;
     try {
         if (app && app._router && Array.isArray(app._router.stack)) {
@@ -104,5 +108,3 @@ function unregisterModelRoutes(app, modelName) {
         console.error('Failed to unregister routes:', e);
     }
 }
-
-module.exports = { loadAndRegisterRoutes, unregisterModelRoutes };

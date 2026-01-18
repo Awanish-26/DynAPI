@@ -1,13 +1,7 @@
-const express = require('express');
-const router = express.Router();
+import { Router } from 'express';
+const router = Router();
 
-const {
-    publishModel,
-    getModels,
-    getModel,
-    updateModel,
-    deleteModel
-} = require('../controllers/modelController');
+import { publishModel, getModels, getModel, updateModel, deleteModel } from '../controllers/modelController.js';
 
 // Models management
 router.get('/models', getModels);
@@ -16,4 +10,4 @@ router.put('/models/:name', updateModel);
 router.get('/models/:name', getModel);
 router.delete('/models/:name', deleteModel);
 
-module.exports = router;
+export default router;

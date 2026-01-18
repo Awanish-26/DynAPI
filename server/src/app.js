@@ -1,15 +1,15 @@
-const express = require('express');
-const dotenv = require('dotenv');
-const authRoutes = require('./routes/auth');
-const apiRoutes = require('./routes/api');
-const cors = require("cors");
-const { loadAndRegisterRoutes } = require('./services/routeLoader');
+import express, { json } from 'express';
+import { config } from 'dotenv';
+import authRoutes from './routes/authRoutes.js';
+import apiRoutes from './routes/apiRoutes.js';
+import cors from "cors";
+import { loadAndRegisterRoutes } from './services/routeLoader.js';
 
-dotenv.config();
+config();
 
 const app = express();
-const port = process.env.PORT || 3000;
-const corsOrigin = process.env.CORS_ORIGIN || 'http://localhost:5173';
+const port = process.env.PORT;
+const corsOrigin = process.env.CORS_ORIGIN;
 
 // Middleware
 app.use(cors({
@@ -18,15 +18,15 @@ app.use(cors({
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     credentials: true
 }));
-app.use(express.json());
+app.use(json());
 
 // Await dynamic routes before registering other routers and the 404 handler
 (async function bootstrap() {
     try {
-        await loadAndRegisterRoutes(app); // important
 
-        app.use('/auth', authRoutes);
         app.use('/api', apiRoutes);
+        app.use('/auth', authRoutes);
+        await loadAndRegisterRoutes(app);
 
         app.get('/health', (req, res) => {
             res.send('Running Smoothly !!!');

@@ -1,5 +1,6 @@
-const { sessions, getSession } = require('../utils/session');
-const jwt = require('jsonwebtoken');
+import { sessions, getSession } from '../utils/session.js';
+import pkg from 'jsonwebtoken';
+const { verify } = pkg;
 
 // Authentication middleware to check and validate tokens
 const authenticateToken = (req, res, next) => {
@@ -10,7 +11,7 @@ const authenticateToken = (req, res, next) => {
         return res.status(401).json({ message: 'Access token required' });
     }
 
-    jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
+    verify(token, process.env.JWT_SECRET, (err, user) => {
         if (err) {
             // Token is invalid (e.g., expired, malformed)
             console.error('JWT Verification Error:', err.message);
@@ -23,4 +24,4 @@ const authenticateToken = (req, res, next) => {
     });
 };
 
-module.exports = { authenticateToken };
+export default authenticateToken; 

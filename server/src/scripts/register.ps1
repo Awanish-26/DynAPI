@@ -3,11 +3,19 @@ param (
     [string]$role,
 
     [Parameter(Mandatory=$true)]
+    [string]$username,
+
+    [Parameter(Mandatory=$true)]
+    [string]$email,
+
+    [Parameter(Mandatory=$true)]
     [string]$password
 )
 
 $body = @{
     role = $role
+    username = $username
+    email = $email
     password = $password
 } | ConvertTo-Json
 

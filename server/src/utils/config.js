@@ -1,8 +1,8 @@
 // Session configuration
-const SESSION_EXPIRY = 24 * 60 * 60 * 1000; // 24 hours
+export const SESSION_EXPIRY = 24 * 60 * 60 * 1000; // 24 hours
 
 // Role permissions
-const rolePermissions = {
+export const rolePermissions = {
     ADMIN: [
     ],
     MANAGER: [
@@ -11,9 +11,3 @@ const rolePermissions = {
     ]
 };
 
-
-
-module.exports = {
-    SESSION_EXPIRY,
-    rolePermissions,
-};

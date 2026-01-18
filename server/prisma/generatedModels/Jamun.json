@@ -1,0 +1,35 @@
+{
+  "name": "Jamun",
+  "fields": [
+    {
+      "name": "Maida",
+      "type": "string",
+      "required": false,
+      "unique": false
+    },
+    {
+      "name": "Chini",
+      "type": "string",
+      "required": false,
+      "unique": false
+    },
+    {
+      "name": "Soda",
+      "type": "string",
+      "required": false,
+      "unique": false
+    }
+  ],
+  "rbac": {
+    "ADMIN": [
+      "all"
+    ],
+    "MANAGER": [
+      "read"
+    ],
+    "VIEWER": [
+      "read"
+    ]
+  },
+  "tableName": "jamuns"
+}

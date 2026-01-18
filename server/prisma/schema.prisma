@@ -5,11 +5,12 @@ generator client {
 
 datasource db {
   provider = "sqlite"
-  url      = env("DATABASE_URL")
 }
 
 model User {
   id        String   @id @default(uuid())
+  username  String   @unique
+  email     String   @unique
   password  String
   role      Role     @default(ADMIN)
   createdAt DateTime @default(now())
@@ -25,26 +26,19 @@ enum Role {
 
 
 
-model Students {
+
+model Sabji {
   id        Int      @id @default(autoincrement())
-  Name String
-  Class Int
-  Subjects String
-  Grades String
+  Puri String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
 
-
-
-model Books {
+model Jamun {
   id        Int      @id @default(autoincrement())
-  Name String
-  Auther String
-  DateReleased  DateTime
-  Price Int
-  Stock Int
+  Maida String?
+  Chini String?
+  Soda String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
-
