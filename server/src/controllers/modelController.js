@@ -3,7 +3,7 @@ import { join } from 'path';
 import { prisma } from '../prisma/client.js';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
-import { toPascal, findModelBlock, removeModelFromSchema } from '../utils/modelUtils.js';
+import { toPascal, findModelBlock, removeModelFromSchema, writeTempSchemaWithOutput, swapClient } from '../utils/modelUtils.js';
 import { exec } from 'child_process';
 import { loadAndRegisterRoutes, unregisterModelRoutes } from '../services/routeLoader.js';
 import { promisify } from 'util';
@@ -55,13 +55,22 @@ const upsertModelInSchema = async (schemaPath, modelName, modelBlock) => {
 export const getModels = async (req, res) => {
     try {
         const files = await readdir(modelsDir);
-        const models = [];
-        for (const file of files) {
-            if (!file.endsWith('.json')) continue;
-            const content = await readFile(join(modelsDir, file), 'utf-8');
-            const json = JSON.parse(content);
-            models.push({ name: json.name, fields: json.fields, ownerField: json.ownerField || null });
-        }
+        // Filter JSON files first
+        const jsonFiles = files.filter(file => file.endsWith('.json'));
+        
+        // Read all files in parallel for better performance
+        const fileReads = jsonFiles.map(async (file) => {
+            try {
+                const content = await readFile(join(modelsDir, file), 'utf-8');
+                const json = JSON.parse(content);
+                return { name: json.name, fields: json.fields, ownerField: json.ownerField || null };
+            } catch (err) {
+                console.error(`Failed to read model file ${file}:`, err);
+                return null;
+            }
+        });
+        
+        const models = (await Promise.all(fileReads)).filter(Boolean);
         res.json(models);
     } catch {
         res.status(500).json({ message: 'Failed to retrieve models.' });

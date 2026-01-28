@@ -3,6 +3,9 @@ import pkg from 'jsonwebtoken';
 const { sign } = pkg;
 import { prisma } from '../prisma/client.js';
 
+// Security configuration
+const BCRYPT_SALT_ROUNDS = 10;
+
 export const register = async (req, res) => {
     const { role, username, email, password } = req.body;
 
@@ -16,7 +19,7 @@ export const register = async (req, res) => {
             return res.status(409).json({ message: 'User with this role already exists' });
         }
 
-        const hashedPassword = await hash(password, 10);
+        const hashedPassword = await hash(password, BCRYPT_SALT_ROUNDS);
 
         const user = await prisma.user.create({
             data: {

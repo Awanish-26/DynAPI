@@ -1,11 +1,9 @@
-import { readFile, writeFile, mkdir } from 'fs/promises';
+import { readFile, writeFile, mkdir, rename, unlink } from 'fs/promises';
 import { join, dirname } from 'path';
-
-// Or if using 'fs' namespace:
 import * as fs from 'fs/promises';
 import * as path from 'path';
 
-async function writeTempSchemaWithOutput(baseSchemaPath, outDir) {
+export async function writeTempSchemaWithOutput(baseSchemaPath, outDir) {
     const schema = await fs.readFile(baseSchemaPath, 'utf-8');
     const generatorBlockRegex = /generator\s+client\s+\{[\s\S]*?\}/m;
     const replaced = schema.replace(generatorBlockRegex, (block) => {
@@ -23,6 +21,29 @@ async function writeTempSchemaWithOutput(baseSchemaPath, outDir) {
     const tmpSchema = path.join(tmpDir, `schema.publish.${Date.now()}.prisma`);
     await fs.writeFile(tmpSchema, replaced, 'utf-8');
     return tmpSchema;
+}
+
+export async function swapClient(newClientDir) {
+    const targetDir = path.join(path.dirname(new URL(import.meta.url).pathname), '../../generated/prisma');
+    const backupDir = path.join(path.dirname(targetDir), 'prisma.bak');
+    
+    try {
+        // Create backup of current client
+        await fs.rename(targetDir, backupDir).catch(() => {});
+        // Move new client to target location
+        await fs.rename(newClientDir, targetDir);
+        // Clean up backup
+        await fs.rm(backupDir, { recursive: true, force: true }).catch(() => {});
+    } catch (error) {
+        // Restore backup if swap failed
+        try {
+            await fs.rm(targetDir, { recursive: true, force: true }).catch(() => {});
+            await fs.rename(backupDir, targetDir).catch(() => {});
+        } catch (restoreError) {
+            console.error('Failed to restore backup:', restoreError);
+        }
+        throw error;
+    }
 }
 
 export const toPascal = (s = '') => s ? s[0].toUpperCase() + s.slice(1) : s;

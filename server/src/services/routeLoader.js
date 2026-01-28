@@ -18,15 +18,32 @@ const registeredRoutes = new Set();
 export const loadAndRegisterRoutes = async (app) => {
     try {
         const files = await readdir(modelsDir);
+        const jsonFiles = files.filter(file => file.endsWith('.json'));
+        
+        // Read all model definitions in parallel for better performance
+        const modelDefinitions = await Promise.all(
+            jsonFiles.map(async (file) => {
+                try {
+                    const modelName = basename(file, '.json');
+                    const content = await readFile(join(modelsDir, file), 'utf-8');
+                    const definition = JSON.parse(content);
+                    return { modelName, definition };
+                } catch (err) {
+                    console.error(`Failed to load model from ${file}:`, err);
+                    return null;
+                }
+            })
+        );
 
-        for (const file of files) {
-            if (!file.endsWith('.json')) continue;
-
-            const modelName = basename(file, '.json');
+        // Register routes for each valid model
+        for (const item of modelDefinitions) {
+            if (!item) continue;
+            
+            const { modelName, definition: modelDefinition } = item;
             const routePath = `/api/${modelName.toLowerCase()}`;
+            
             if (registeredRoutes.has(routePath)) continue;
 
-            const modelDefinition = JSON.parse(await readFile(join(modelsDir, file), 'utf-8'));
             const router = Router();
 
             // Resolve Prisma delegate (Prisma uses lowerCamelCase)
