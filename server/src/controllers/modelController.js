@@ -28,6 +28,27 @@ const typeMapping = {
     'datetime': 'DateTime'
 };
 
+// Helper function to build Prisma model string efficiently
+const buildPrismaModelString = (normalizedName, fields) => {
+    const lines = [
+        `\nmodel ${normalizedName} {`,
+        `  id        Int      @id @default(autoincrement())`
+    ];
+    
+    fields.forEach(field => {
+        let line = `  ${field.name} ${typeMapping[field.type] || 'String'}`;
+        if (!field.required) line += '?';
+        if (field.unique) line += ' @unique';
+        lines.push(line);
+    });
+    
+    lines.push(`  createdAt DateTime @default(now())`);
+    lines.push(`  updatedAt DateTime @updatedAt`);
+    lines.push(`}\n`);
+    
+    return lines.join('\n');
+};
+
 const upsertModelInSchema = async (schemaPath, modelName, modelBlock) => {
     let schema = '';
     try {
@@ -37,14 +58,16 @@ const upsertModelInSchema = async (schemaPath, modelName, modelBlock) => {
     }
 
     const blockRegex = new RegExp(`model\\s+${modelName}\\s+\\{[\\s\\S]*?\\n\\}`, 'gm');
-
-    if (blockRegex.test(schema)) {
-        // Reset regex before replace
-        blockRegex.lastIndex = 0;
-        schema = schema.replace(blockRegex, modelBlock.trim());
-    } else {
+    
+    // Optimize: Check and replace in one operation
+    const newSchema = schema.replace(blockRegex, modelBlock.trim());
+    
+    if (newSchema === schema) {
+        // Model not found, append it
         if (!schema.endsWith('\n')) schema += '\n';
         schema += '\n' + modelBlock.trim() + '\n';
+    } else {
+        schema = newSchema;
     }
 
     await writeFile(schemaPath, schema, 'utf-8');
@@ -118,18 +141,8 @@ export const publishModel = async (req, res) => {
     try {
         await writeFile(modelJsonPath, JSON.stringify(modelDefinition, null, 2));
 
-        // Build Prisma model block
-        let modelString = `\nmodel ${normalizedName} {\n`;
-        modelString += `  id        Int      @id @default(autoincrement())\n`;
-        fields.forEach(field => {
-            let line = `  ${field.name} ${typeMapping[field.type] || 'String'}`;
-            if (!field.required) line += '?';
-            if (field.unique) line += ' @unique';
-            modelString += line + '\n';
-        });
-        modelString += `  createdAt DateTime @default(now())\n`;
-        modelString += `  updatedAt DateTime @updatedAt\n`;
-        modelString += `}\n`;
+        // Build Prisma model block efficiently
+        const modelString = buildPrismaModelString(normalizedName, fields);
 
         await upsertModelInSchema(schemaPath, normalizedName, modelString);
 
@@ -180,18 +193,8 @@ export const updateModel = async (req, res) => {
         const updated = { ...current, fields, ownerField: ownerField ?? current.ownerField, rbac: rbac ?? current.rbac };
         await writeFile(modelJsonPath, JSON.stringify(updated, null, 2));
 
-        // Rebuild prisma block
-        let modelString = `\nmodel ${normalizedName} {\n`;
-        modelString += `  id        Int      @id @default(autoincrement())\n`;
-        fields.forEach(field => {
-            let line = `  ${field.name} ${typeMapping[field.type] || 'String'}`;
-            if (!field.required) line += '?';
-            if (field.unique) line += ' @unique';
-            modelString += line + '\n';
-        });
-        modelString += `  createdAt DateTime @default(now())\n`;
-        modelString += `  updatedAt DateTime @updatedAt\n`;
-        modelString += `}\n`;
+        // Rebuild prisma block efficiently
+        const modelString = buildPrismaModelString(normalizedName, fields);
 
         await upsertModelInSchema(schemaPath, normalizedName, modelString);
 
