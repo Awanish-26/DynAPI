@@ -38,25 +38,17 @@ export const getSessionCount = () => {
     return sessions.size;
 };
 
-// Clean up expired sessions (optimized for better performance)
+// Clean up expired sessions efficiently (safe to delete during Map iteration)
 export const cleanSessions = () => {
     const now = Date.now();
     let cleanedCount = 0;
-    
-    // Use Array.from for better performance with large Maps
-    const expiredTokens = [];
-    
-    for (const [token, session] of sessions.entries()) {
+
+    sessions.forEach((session, token) => {
         if (session.expires < now) {
-            expiredTokens.push(token);
+            sessions.delete(token);
+            cleanedCount++;
         }
-    }
-    
-    // Batch delete expired sessions
-    for (const token of expiredTokens) {
-        sessions.delete(token);
-        cleanedCount++;
-    }
+    });
 
     return cleanedCount;
 };

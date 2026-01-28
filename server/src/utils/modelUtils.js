@@ -1,5 +1,3 @@
-import { readFile, writeFile, mkdir, rename, unlink } from 'fs/promises';
-import { join, dirname } from 'path';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 
@@ -28,17 +26,36 @@ export async function swapClient(newClientDir) {
     const backupDir = path.join(path.dirname(targetDir), 'prisma.bak');
     
     try {
-        // Create backup of current client
-        await fs.rename(targetDir, backupDir).catch(() => {});
+        // Create backup of current client if it exists
+        try {
+            await fs.rename(targetDir, backupDir);
+        } catch (err) {
+            // If targetDir doesn't exist, that's okay - log and continue
+            if (err.code !== 'ENOENT') {
+                console.warn('Failed to create backup:', err.message);
+            }
+        }
+        
         // Move new client to target location
         await fs.rename(newClientDir, targetDir);
-        // Clean up backup
-        await fs.rm(backupDir, { recursive: true, force: true }).catch(() => {});
+        
+        // Clean up backup on success
+        await fs.rm(backupDir, { recursive: true, force: true }).catch(err => {
+            console.warn('Failed to clean up backup:', err.message);
+        });
     } catch (error) {
         // Restore backup if swap failed
+        console.error('Client swap failed, attempting rollback:', error);
         try {
-            await fs.rm(targetDir, { recursive: true, force: true }).catch(() => {});
-            await fs.rename(backupDir, targetDir).catch(() => {});
+            // Check if backup exists before attempting restore
+            const backupExists = await fs.access(backupDir).then(() => true).catch(() => false);
+            if (backupExists) {
+                // Remove failed target if it exists
+                await fs.rm(targetDir, { recursive: true, force: true }).catch(() => {});
+                // Restore backup
+                await fs.rename(backupDir, targetDir);
+                console.log('Rollback successful');
+            }
         } catch (restoreError) {
             console.error('Failed to restore backup:', restoreError);
         }
