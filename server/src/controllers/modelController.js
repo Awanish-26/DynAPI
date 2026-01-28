@@ -3,7 +3,7 @@ import { join } from 'path';
 import { prisma } from '../prisma/client.js';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
-import { toPascal, findModelBlock, removeModelFromSchema } from '../utils/modelUtils.js';
+import { toPascal, findModelBlock, removeModelFromSchema, writeTempSchemaWithOutput, swapClient } from '../utils/modelUtils.js';
 import { exec } from 'child_process';
 import { loadAndRegisterRoutes, unregisterModelRoutes } from '../services/routeLoader.js';
 import { promisify } from 'util';
@@ -28,6 +28,27 @@ const typeMapping = {
     'datetime': 'DateTime'
 };
 
+// Helper function to build Prisma model string efficiently
+const buildPrismaModelString = (normalizedName, fields) => {
+    const lines = [
+        `\nmodel ${normalizedName} {`,
+        `  id        Int      @id @default(autoincrement())`
+    ];
+    
+    fields.forEach(field => {
+        let line = `  ${field.name} ${typeMapping[field.type] || 'String'}`;
+        if (!field.required) line += '?';
+        if (field.unique) line += ' @unique';
+        lines.push(line);
+    });
+    
+    lines.push(`  createdAt DateTime @default(now())`);
+    lines.push(`  updatedAt DateTime @updatedAt`);
+    lines.push(`}\n`);
+    
+    return lines.join('\n');
+};
+
 const upsertModelInSchema = async (schemaPath, modelName, modelBlock) => {
     let schema = '';
     try {
@@ -37,14 +58,16 @@ const upsertModelInSchema = async (schemaPath, modelName, modelBlock) => {
     }
 
     const blockRegex = new RegExp(`model\\s+${modelName}\\s+\\{[\\s\\S]*?\\n\\}`, 'gm');
-
-    if (blockRegex.test(schema)) {
-        // Reset regex before replace
-        blockRegex.lastIndex = 0;
-        schema = schema.replace(blockRegex, modelBlock.trim());
-    } else {
+    
+    // Optimize: Check and replace in one operation
+    const newSchema = schema.replace(blockRegex, modelBlock.trim());
+    
+    if (newSchema === schema) {
+        // Model not found, append it
         if (!schema.endsWith('\n')) schema += '\n';
         schema += '\n' + modelBlock.trim() + '\n';
+    } else {
+        schema = newSchema;
     }
 
     await writeFile(schemaPath, schema, 'utf-8');
@@ -55,13 +78,22 @@ const upsertModelInSchema = async (schemaPath, modelName, modelBlock) => {
 export const getModels = async (req, res) => {
     try {
         const files = await readdir(modelsDir);
-        const models = [];
-        for (const file of files) {
-            if (!file.endsWith('.json')) continue;
-            const content = await readFile(join(modelsDir, file), 'utf-8');
-            const json = JSON.parse(content);
-            models.push({ name: json.name, fields: json.fields, ownerField: json.ownerField || null });
-        }
+        // Filter JSON files first
+        const jsonFiles = files.filter(file => file.endsWith('.json'));
+        
+        // Read all files in parallel for better performance
+        const fileReads = jsonFiles.map(async (file) => {
+            try {
+                const content = await readFile(join(modelsDir, file), 'utf-8');
+                const json = JSON.parse(content);
+                return { name: json.name, fields: json.fields, ownerField: json.ownerField || null };
+            } catch (err) {
+                console.error(`Failed to read model file ${file}:`, err);
+                return null;
+            }
+        });
+        
+        const models = (await Promise.all(fileReads)).filter(Boolean);
         res.json(models);
     } catch {
         res.status(500).json({ message: 'Failed to retrieve models.' });
@@ -109,18 +141,8 @@ export const publishModel = async (req, res) => {
     try {
         await writeFile(modelJsonPath, JSON.stringify(modelDefinition, null, 2));
 
-        // Build Prisma model block
-        let modelString = `\nmodel ${normalizedName} {\n`;
-        modelString += `  id        Int      @id @default(autoincrement())\n`;
-        fields.forEach(field => {
-            let line = `  ${field.name} ${typeMapping[field.type] || 'String'}`;
-            if (!field.required) line += '?';
-            if (field.unique) line += ' @unique';
-            modelString += line + '\n';
-        });
-        modelString += `  createdAt DateTime @default(now())\n`;
-        modelString += `  updatedAt DateTime @updatedAt\n`;
-        modelString += `}\n`;
+        // Build Prisma model block efficiently
+        const modelString = buildPrismaModelString(normalizedName, fields);
 
         await upsertModelInSchema(schemaPath, normalizedName, modelString);
 
@@ -171,18 +193,8 @@ export const updateModel = async (req, res) => {
         const updated = { ...current, fields, ownerField: ownerField ?? current.ownerField, rbac: rbac ?? current.rbac };
         await writeFile(modelJsonPath, JSON.stringify(updated, null, 2));
 
-        // Rebuild prisma block
-        let modelString = `\nmodel ${normalizedName} {\n`;
-        modelString += `  id        Int      @id @default(autoincrement())\n`;
-        fields.forEach(field => {
-            let line = `  ${field.name} ${typeMapping[field.type] || 'String'}`;
-            if (!field.required) line += '?';
-            if (field.unique) line += ' @unique';
-            modelString += line + '\n';
-        });
-        modelString += `  createdAt DateTime @default(now())\n`;
-        modelString += `  updatedAt DateTime @updatedAt\n`;
-        modelString += `}\n`;
+        // Rebuild prisma block efficiently
+        const modelString = buildPrismaModelString(normalizedName, fields);
 
         await upsertModelInSchema(schemaPath, normalizedName, modelString);
 

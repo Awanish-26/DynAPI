@@ -38,7 +38,7 @@ export const getSessionCount = () => {
     return sessions.size;
 };
 
-// Clean up expired sessions
+// Clean up expired sessions efficiently (safe to delete during Map iteration)
 export const cleanSessions = () => {
     const now = Date.now();
     let cleanedCount = 0;
